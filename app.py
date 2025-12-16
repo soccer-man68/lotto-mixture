@@ -9,41 +9,44 @@ st.set_page_config(
 )
 
 # =========================================================
-# [핵심] 모바일 '세로 줄서기'를 막는 강력한 스타일
+# [핵심] 간격(Gap)을 0으로 만드는 초강력 CSS
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 틀(Block) 강제 가로 정렬 */
-    /* Streamlit은 모바일에서 이 틀을 세로(column)로 바꿔버립니다. */
-    /* 이걸 !important로 막아서 강제로 가로(row)로 유지시킵니다. */
+    /* 1. 컬럼 사이의 거대한 간격(기본 16px)을 2px로 강제 축소 */
     div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important; /* 무조건 가로! */
-        flex-wrap: nowrap !important;   /* 줄바꿈 금지! */
+        gap: 2px !important; /* 여기가 범인 검거 현장! */
+        flex-direction: row !important; /* 무조건 가로 정렬 */
+        flex-wrap: nowrap !important;
     }
 
-    /* 2. 칸(Column) 너비 강제 고정 */
+    /* 2. 컬럼 자체의 불필요한 여백 제거 */
     div[data-testid="column"] {
-        width: 14.28% !important;       /* 1/7 크기 */
-        flex: 0 0 14.28% !important;
-        min-width: 1px !important;      /* 최소 너비 제한 해제 */
-        padding: 1px !important;        /* 간격 최소화 */
+        min-width: 0px !important;
+        width: 14.28% !important; /* 정확히 1/7 */
+        flex: 1 !important;
+        padding: 0px !important;
+        margin: 0px !important;
     }
 
-    /* 3. 버튼 디자인 (작게) */
+    /* 3. 버튼 꽉 차게 만들기 */
     div.stButton > button {
         width: 100%;
-        padding: 5px 0px !important;
-        font-size: 11px !important;     /* 글씨 더 작게 */
+        padding: 0px !important;   /* 버튼 안쪽 여백 제거 */
+        margin: 0px !important;    /* 버튼 바깥 여백 제거 */
+        height: 35px !important;   /* 버튼 높이 고정 */
         min-height: 0px !important;
-        margin: 0px !important;
+        font-size: 12px !important;
         line-height: 1 !important;
+        border-radius: 4px !important;
     }
     
-    /* 4. 불필요한 여백 제거 */
+    /* 4. 화면 양옆 여백 줄이기 (화면 넓게 쓰기) */
     .block-container {
+        padding-top: 2rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
+        max-width: 100% !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -55,14 +58,12 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.warning("🔒 로그인 필요")
+    st.warning("🔒 로그인")
     pw = st.text_input("비밀번호", type="password")
     if st.button("로그인", use_container_width=True):
         if pw == "0207":
             st.session_state.logged_in = True
             st.rerun()
-        else:
-            st.error("비밀번호 오류")
     st.stop()
 
 # ==========================================
@@ -95,7 +96,7 @@ def reset_all():
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [사이드바 설정]
+# [사이드바]
 # ==========================================
 with st.sidebar:
     st.header("설정")
@@ -115,32 +116,25 @@ with st.sidebar:
 # ==========================================
 st.write("### 🎱 모바일 로또")
 
-mode = st.radio(
-    "모드",
-    ["🥇 최적", "🥶 최악"],
-    horizontal=True,
-    label_visibility="collapsed"
-)
+# 모드 선택
+mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
 
 if "최적" in mode:
     st.session_state.mode = 'gold'
-    st.caption("현재: **최적(노랑)** 입력 중")
+    st.caption("현재: **최적(노랑)** 선택 중")
 else:
     st.session_state.mode = 'blue'
-    st.caption("현재: **최악(파랑)** 입력 중")
+    st.caption("현재: **최악(파랑)** 선택 중")
 
-st.write("") 
-
-# --- 번호판 그리기 (7개씩 끊어서 생성) ---
-# 여기서 st.columns(7)이 실행될 때, 위의 CSS가 "가로로 서라!"라고 명령합니다.
+# --- 번호판 그리기 ---
+# gap: 2px !important가 적용된 상태에서 그려집니다.
 for row_start in range(1, 46, 7):
-    cols = st.columns(7) 
+    cols = st.columns(7)
     
     for i in range(7):
         num = row_start + i
         if num > 45: break
         
-        # 버튼 텍스트/스타일
         label = str(num)
         is_primary = False
         
@@ -151,6 +145,7 @@ for row_start in range(1, 46, 7):
             label = "❌"
             is_primary = False 
         
+        # cols[i]에 버튼 배치
         cols[i].button(
             label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
             key=f"btn_{num}",
