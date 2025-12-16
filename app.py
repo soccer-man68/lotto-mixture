@@ -3,55 +3,56 @@ import random
 
 # --- 1. 페이지 설정 ---
 st.set_page_config(
-    page_title="로또 모바일",
+    page_title="로또 생성기",
     page_icon="🎱",
     layout="centered"
 )
 
 # =========================================================
-# [핵심 CSS] "모든 컬럼을 무조건 1/7로 고정하라"
+# [CSS] PC 간격 축소 + 모바일 7칸 강제 고정
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 이 페이지에 있는 모든 '칸(Column)'은 무조건 14.28% 너비를 가진다. */
-    /* 다른 설정(최소 너비 등)은 전부 무시(!important)한다. */
+    /* 1. PC/모바일 공통: 컬럼 간격(Gap) 제거 */
+    /* 이게 없으면 PC에서 버튼 사이가 너무 벌어집니다. */
+    div[data-testid="stHorizontalBlock"] {
+        gap: 0.2rem !important; /* 간격을 16px -> 3px 정도로 축소 */
+    }
+
+    /* 2. 모바일/PC 공통: 컬럼 너비 강제 고정 */
+    /* 'min-width: 0'이 핵심입니다. 이게 없으면 폰에서 버튼이 밀려납니다. */
     div[data-testid="column"] {
         width: 14.28% !important;
         flex: 0 0 14.28% !important;
-        min-width: 0px !important;
-        max-width: 14.28% !important;
-        padding: 1px !important; /* 칸 사이 간격 1px */
-        overflow: hidden !important; /* 튀어나오면 자름 */
+        min-width: 0px !important; /* 👈 1,2번만 나오는 현상 해결의 열쇠 */
+        padding: 0px !important;
     }
 
-    /* 2. 칸들을 감싸는 부모 틀의 간격을 없앤다. */
-    div[data-testid="stHorizontalBlock"] {
-        gap: 0px !important;
-        flex-wrap: nowrap !important; /* 줄바꿈 절대 금지 */
-    }
-
-    /* 3. 버튼 크기와 글자 크기를 확 줄인다. */
+    /* 3. 버튼 디자인 (꽉 차게 + 글자 조절) */
     div.stButton > button {
         width: 100% !important;
-        padding: 0px !important;
+        padding: 0.2rem 0rem !important; /* 버튼 내부 여백 축소 */
         margin: 0px !important;
-        height: 35px !important;   /* 버튼 높이 */
-        font-size: 10px !important; /* 글자 크기 10px */
         line-height: 1 !important;
-        border: 1px solid #ddd !important; /* 경계선 얇게 */
+        height: auto !important;
+        min-height: 35px !important; 
     }
     
-    /* 4. 버튼 안의 텍스트가 두 줄이 되지 않게 한다. */
+    /* 4. 버튼 텍스트 크기 반응형 조절 (폰에서는 작게) */
     div.stButton > button p {
-        font-size: 10px !important;
-        white-space: nowrap !important;
+        font-size: 14px !important;
+    }
+    @media (max-width: 640px) {
+        div.stButton > button p {
+            font-size: 10px !important; /* 폰에서는 글자 작게 */
+        }
     }
 
-    /* 5. 전체 화면 여백을 최소화해서 공간을 확보한다. */
+    /* 5. PC 화면이 너무 넓을 때 중앙 정렬 및 최대 너비 제한 */
     .block-container {
-        padding-left: 0.2rem !important;
-        padding-right: 0.2rem !important;
-        max-width: 100% !important;
+        max-width: 800px !important;
+        padding-top: 1rem !important;
+        padding-bottom: 5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -65,14 +66,14 @@ if 'logged_in' not in st.session_state:
 if not st.session_state.logged_in:
     st.warning("🔒 로그인")
     pw = st.text_input("비밀번호", type="password")
-    if st.button("로그인"): # 여기는 use_container_width 안 씀 (CSS 충돌 방지)
+    if st.button("로그인"):
         if pw == "0207":
             st.session_state.logged_in = True
             st.rerun()
     st.stop()
 
 # ==========================================
-# [데이터 로직]
+# [로직]
 # ==========================================
 if 'opt_nums' not in st.session_state:
     st.session_state.opt_nums = set()
@@ -101,50 +102,37 @@ def reset_all():
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [사이드바 메뉴] (화면 공간 확보를 위해 전부 이쪽으로 뺌)
+# [UI 구성]
 # ==========================================
-with st.sidebar:
-    st.header("설정 메뉴")
-    st.write("---")
-    st.write("🥇 **최적(Gold)**")
-    pick_opt = st.selectbox("최적 개수", [0,1,2,3,4,5,6], index=4, label_visibility="collapsed")
-    st.caption(f"선택: {len(st.session_state.opt_nums)}개")
+st.title("🎱 로또 커스텀")
+
+# 설정은 st.expander(접이식 메뉴) 안에 넣어서 번호판에 영향 안 주게 함
+with st.expander("⚙️ 설정 및 초기화 (눌러서 열기)", expanded=False):
+    c1, c2 = st.columns(2)
+    with c1:
+        st.write("🥇 **최적(Gold)**")
+        pick_opt = st.selectbox("개수", [0,1,2,3,4,5,6], index=4, key='opt')
+    with c2:
+        st.write("🥶 **최악(Blue)**")
+        pick_worst = st.selectbox("개수", [0,1,2,3,4,5,6], index=2, key='worst')
     
-    st.write("---")
-    st.write("🥶 **최악(Blue)**")
-    pick_worst = st.selectbox("최악 개수", [0,1,2,3,4,5,6], index=2, label_visibility="collapsed")
-    st.caption(f"선택: {len(st.session_state.worst_nums)}개")
-    
-    st.write("---")
-    # 초기화 버튼
-    if st.button("🔄 번호 초기화"):
+    if st.button("🔄 번호 초기화", use_container_width=True):
         reset_all()
         st.rerun()
 
-# ==========================================
-# [메인 화면]
-# ==========================================
-st.write("### 🎱 모바일 로또")
-
-# 모드 선택 (여기는 columns 안 쓰고 그냥 라디오 버튼으로 둠)
-# columns를 쓰면 위의 강력한 CSS 때문에 모양이 깨질 수 있어서 피함
-mode = st.radio(
-    "모드 선택",
-    ["🥇 최적 (터치시 노랑)", "🥶 최악 (터치시 파랑)"],
-    label_visibility="collapsed"
-)
-
+# 모드 선택
+mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
 if "최적" in mode:
     st.session_state.mode = 'gold'
-    st.info("현재: **최적(Gold)** 입력 중")
+    st.caption(f"현재: **최적(노랑)** 선택 중 | {len(st.session_state.opt_nums)}개 선택됨")
 else:
     st.session_state.mode = 'blue'
-    st.info("현재: **최악(Blue)** 입력 중")
+    st.caption(f"현재: **최악(파랑)** 선택 중 | {len(st.session_state.worst_nums)}개 선택됨")
 
-# --- 번호판 그리기 (유일하게 columns를 쓰는 곳) ---
-# 위의 CSS가 오직 이것만을 위해 존재합니다.
+# --- 번호판 (7열 그리드) ---
+# 여기서부터는 CSS가 강력하게 적용되어 7칸으로 쪼개집니다.
 for row_start in range(1, 46, 7):
-    cols = st.columns(7) # 무조건 14.28%씩 쪼개짐
+    cols = st.columns(7)
     
     for i in range(7):
         num = row_start + i
@@ -160,7 +148,6 @@ for row_start in range(1, 46, 7):
             label = "❌"
             is_primary = False 
         
-        # 버튼 생성
         cols[i].button(
             label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
             key=f"btn_{num}",
@@ -171,17 +158,16 @@ for row_start in range(1, 46, 7):
 
 st.divider()
 
-# 생성 버튼 (CSS 충돌 방지를 위해 use_container_width 안 씀)
-if st.button("🎲 10게임 생성하기"):
+if st.button("🎲 10게임 생성", type="primary", use_container_width=True):
     gold_set = list(st.session_state.opt_nums)
     blue_set = list(st.session_state.worst_nums)
     
     if len(gold_set) < pick_opt:
-        st.error(f"최적 번호 부족! ({len(gold_set)}/{pick_opt})")
+        st.error(f"최적 부족! ({len(gold_set)}/{pick_opt})")
     elif len(blue_set) < pick_worst:
-        st.error(f"최악 번호 부족! ({len(blue_set)}/{pick_worst})")
+        st.error(f"최악 부족! ({len(blue_set)}/{pick_worst})")
     else:
-        st.success("생성 완료! (메뉴를 열어 개수 확인)")
+        st.success("생성 완료!")
         result_txt = ""
         for k in range(1, 11):
             s_gold = random.sample(gold_set, pick_opt)
