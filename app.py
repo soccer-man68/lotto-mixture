@@ -3,57 +3,61 @@ import random
 
 # --- 1. 페이지 설정 ---
 st.set_page_config(
-    page_title="로또 생성기",
+    page_title="로또 모바일",
     page_icon="🎱",
     layout="centered"
 )
 
 # =========================================================
-# [CSS] PC 간격 축소 + 모바일 7칸 강제 고정
+# [핵심] CSS Grid를 이용한 강제 7등분 (절대 밀리지 않음)
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. PC/모바일 공통: 컬럼 간격(Gap) 제거 */
-    /* 이게 없으면 PC에서 버튼 사이가 너무 벌어집니다. */
+    /* 1. 컨테이너를 Grid로 변경 (가장 강력한 해결책) */
+    /* Streamlit의 줄바꿈 기능을 무시하고 무조건 7개 구역으로 나눕니다. */
     div[data-testid="stHorizontalBlock"] {
-        gap: 0.2rem !important; /* 간격을 16px -> 3px 정도로 축소 */
-    }
-
-    /* 2. 모바일/PC 공통: 컬럼 너비 강제 고정 */
-    /* 'min-width: 0'이 핵심입니다. 이게 없으면 폰에서 버튼이 밀려납니다. */
-    div[data-testid="column"] {
-        width: 14.28% !important;
-        flex: 0 0 14.28% !important;
-        min-width: 0px !important; /* 👈 1,2번만 나오는 현상 해결의 열쇠 */
+        display: grid !important;
+        grid-template-columns: repeat(7, 1fr) !important; /* 1fr = 균등분할 */
+        gap: 2px !important; /* 칸 사이 간격 2px */
         padding: 0px !important;
     }
 
-    /* 3. 버튼 디자인 (꽉 차게 + 글자 조절) */
-    div.stButton > button {
+    /* 2. 각 칸(Column)의 너비 제한 해제 */
+    div[data-testid="column"] {
         width: 100% !important;
-        padding: 0.2rem 0rem !important; /* 버튼 내부 여백 축소 */
-        margin: 0px !important;
-        line-height: 1 !important;
-        height: auto !important;
-        min-height: 35px !important; 
-    }
-    
-    /* 4. 버튼 텍스트 크기 반응형 조절 (폰에서는 작게) */
-    div.stButton > button p {
-        font-size: 14px !important;
-    }
-    @media (max-width: 640px) {
-        div.stButton > button p {
-            font-size: 10px !important; /* 폰에서는 글자 작게 */
-        }
+        min-width: 0px !important; /* 최소 너비 0 (가장 중요) */
+        flex: unset !important;
+        padding: 0px !important;
     }
 
-    /* 5. PC 화면이 너무 넓을 때 중앙 정렬 및 최대 너비 제한 */
-    .block-container {
-        max-width: 800px !important;
-        padding-top: 1rem !important;
-        padding-bottom: 5rem !important;
+    /* 3. 버튼 디자인 (모바일 최적화) */
+    div.stButton > button {
+        width: 100% !important;
+        min-width: 0px !important;
+        padding: 0px !important;  /* 안쪽 여백 제거 */
+        margin: 0px !important;
+        height: 40px !important;  /* 버튼 높이 */
+        font-size: 12px !important;
+        line-height: 1 !important;
+        border-radius: 4px !important;
     }
+    
+    /* 4. 버튼 텍스트 강제 한 줄 표시 */
+    div.stButton > button p {
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    /* 5. 화면 전체 여백 최소화 (폰 화면 넓게 쓰기) */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* [예외 처리] 설정 메뉴 등 다른 컬럼들이 깨지지 않도록 보호 */
+    /* 번호판 외의 다른 요소들은 Grid 적용을 피하기 위해 sidebar 사용 권장 */
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,7 +77,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==========================================
-# [로직]
+# [데이터 로직]
 # ==========================================
 if 'opt_nums' not in st.session_state:
     st.session_state.opt_nums = set()
@@ -102,35 +106,41 @@ def reset_all():
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [UI 구성]
+# [사이드바 (설정)]
 # ==========================================
-st.title("🎱 로또 커스텀")
-
-# 설정은 st.expander(접이식 메뉴) 안에 넣어서 번호판에 영향 안 주게 함
-with st.expander("⚙️ 설정 및 초기화 (눌러서 열기)", expanded=False):
-    c1, c2 = st.columns(2)
-    with c1:
-        st.write("🥇 **최적(Gold)**")
-        pick_opt = st.selectbox("개수", [0,1,2,3,4,5,6], index=4, key='opt')
-    with c2:
-        st.write("🥶 **최악(Blue)**")
-        pick_worst = st.selectbox("개수", [0,1,2,3,4,5,6], index=2, key='worst')
+# 메인 화면에 st.columns를 쓰면 위의 CSS Grid가 적용되어 버리므로
+# 설정 버튼들은 무조건 사이드바에 넣어야 합니다.
+with st.sidebar:
+    st.header("설정 메뉴")
+    st.write("🥇 **최적(Gold)**")
+    pick_opt = st.selectbox("최적 개수", [0,1,2,3,4,5,6], index=4, label_visibility="collapsed")
     
-    if st.button("🔄 번호 초기화", use_container_width=True):
+    st.write("🥶 **최악(Blue)**")
+    pick_worst = st.selectbox("최악 개수", [0,1,2,3,4,5,6], index=2, label_visibility="collapsed")
+    
+    st.write("---")
+    if st.button("🔄 번호 초기화"):
         reset_all()
         st.rerun()
 
+# ==========================================
+# [메인 화면]
+# ==========================================
+st.write("### 🎱 모바일 로또")
+
 # 모드 선택
 mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
+
 if "최적" in mode:
     st.session_state.mode = 'gold'
-    st.caption(f"현재: **최적(노랑)** 선택 중 | {len(st.session_state.opt_nums)}개 선택됨")
+    st.caption(f"**최적(노랑)** 입력 중 | {len(st.session_state.opt_nums)}개 선택")
 else:
     st.session_state.mode = 'blue'
-    st.caption(f"현재: **최악(파랑)** 선택 중 | {len(st.session_state.worst_nums)}개 선택됨")
+    st.caption(f"**최악(파랑)** 입력 중 | {len(st.session_state.worst_nums)}개 선택")
 
-# --- 번호판 (7열 그리드) ---
-# 여기서부터는 CSS가 강력하게 적용되어 7칸으로 쪼개집니다.
+# --- 번호판 그리기 ---
+# 여기서 st.columns(7)을 호출하면, CSS Grid가 작동하여
+# 무조건 화면을 7등분합니다. 절대 줄바꿈되지 않습니다.
 for row_start in range(1, 46, 7):
     cols = st.columns(7)
     
@@ -158,7 +168,7 @@ for row_start in range(1, 46, 7):
 
 st.divider()
 
-if st.button("🎲 10게임 생성", type="primary", use_container_width=True):
+if st.button("🎲 10게임 생성하기"):
     gold_set = list(st.session_state.opt_nums)
     blue_set = list(st.session_state.worst_nums)
     
