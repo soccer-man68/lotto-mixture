@@ -9,43 +9,46 @@ st.set_page_config(
 )
 
 # =========================================================
-# [핵심] 간격(Gap)을 0으로 만드는 초강력 CSS
+# [핵심] "최소 너비(min-width)" 제한을 박살내는 CSS
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 컬럼 사이의 거대한 간격(기본 16px)을 2px로 강제 축소 */
+    /* 1. 가장 중요: 컬럼의 '최소 너비' 제한을 0으로 만듦 */
+    /* 이게 없으면 폰에서 버튼이 뚱뚱해져서 화면 밖으로 밀려납니다. */
+    div[data-testid="column"] {
+        width: 14.2% !important;
+        flex: 1 1 14.2% !important;
+        min-width: 0px !important; /* 👈 범인 검거! 절대 지우지 마세요 */
+        padding: 1px !important;   /* 옆 간격 1px */
+    }
+
+    /* 2. 컬럼들을 감싸는 틀의 간격(Gap) 제거 */
     div[data-testid="stHorizontalBlock"] {
-        gap: 2px !important; /* 여기가 범인 검거 현장! */
-        flex-direction: row !important; /* 무조건 가로 정렬 */
+        gap: 0px !important;      /* 👈 넓은 간격의 원인 제거 */
         flex-wrap: nowrap !important;
     }
 
-    /* 2. 컬럼 자체의 불필요한 여백 제거 */
-    div[data-testid="column"] {
-        min-width: 0px !important;
-        width: 14.28% !important; /* 정확히 1/7 */
-        flex: 1 !important;
-        padding: 0px !important;
-        margin: 0px !important;
+    /* 3. 버튼 크기 강제 축소 */
+    div.stButton > button {
+        width: 100% !important;
+        padding: 0px !important;  /* 안쪽 여백 제거 */
+        margin: 0px !important;   /* 바깥 여백 제거 */
+        font-size: 10px !important; /* 글자 크기 다이어트 */
+        height: 40px !important;  /* 버튼 높이 */
+        min-height: 0px !important;
+        line-height: 1 !important;
     }
 
-    /* 3. 버튼 꽉 차게 만들기 */
-    div.stButton > button {
-        width: 100%;
-        padding: 0px !important;   /* 버튼 안쪽 여백 제거 */
-        margin: 0px !important;    /* 버튼 바깥 여백 제거 */
-        height: 35px !important;   /* 버튼 높이 고정 */
-        min-height: 0px !important;
-        font-size: 12px !important;
-        line-height: 1 !important;
-        border-radius: 4px !important;
+    /* 4. 체크 표시(✅)가 줄바꿈 안 되게 설정 */
+    div.stButton > button p {
+        font-size: 10px !important;
+        white-space: nowrap !important;
     }
     
-    /* 4. 화면 양옆 여백 줄이기 (화면 넓게 쓰기) */
+    /* 5. 화면 전체 여백 제거 (폰 화면 넓게 쓰기) */
     .block-container {
-        padding-top: 2rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
         max-width: 100% !important;
     }
 </style>
@@ -116,7 +119,6 @@ with st.sidebar:
 # ==========================================
 st.write("### 🎱 모바일 로또")
 
-# 모드 선택
 mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
 
 if "최적" in mode:
@@ -127,7 +129,7 @@ else:
     st.caption("현재: **최악(파랑)** 선택 중")
 
 # --- 번호판 그리기 ---
-# gap: 2px !important가 적용된 상태에서 그려집니다.
+# 강제 CSS(min-width: 0)가 적용된 상태에서 그려집니다.
 for row_start in range(1, 46, 7):
     cols = st.columns(7)
     
@@ -145,7 +147,6 @@ for row_start in range(1, 46, 7):
             label = "❌"
             is_primary = False 
         
-        # cols[i]에 버튼 배치
         cols[i].button(
             label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
             key=f"btn_{num}",
