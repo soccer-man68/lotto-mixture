@@ -3,61 +3,72 @@ import random
 
 # --- 1. 페이지 설정 ---
 st.set_page_config(
-    page_title="로또 모바일",
+    page_title="로또 Red & Blue",
     page_icon="🎱",
     layout="centered"
 )
 
 # =========================================================
-# [핵심] CSS Grid를 이용한 강제 7등분 (절대 밀리지 않음)
+# [스타일] 격자 유지 + 폰트 진하게 + 색상 강조
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 컨테이너를 Grid로 변경 (가장 강력한 해결책) */
-    /* Streamlit의 줄바꿈 기능을 무시하고 무조건 7개 구역으로 나눕니다. */
+    /* 1. 번호판 격자(Grid) 유지 (절대 깨지지 않음) */
     div[data-testid="stHorizontalBlock"] {
         display: grid !important;
-        grid-template-columns: repeat(7, 1fr) !important; /* 1fr = 균등분할 */
-        gap: 2px !important; /* 칸 사이 간격 2px */
+        grid-template-columns: repeat(7, 1fr) !important;
+        gap: 2px !important;
         padding: 0px !important;
     }
 
-    /* 2. 각 칸(Column)의 너비 제한 해제 */
+    /* 2. 각 칸의 크기 제한 해제 */
     div[data-testid="column"] {
         width: 100% !important;
-        min-width: 0px !important; /* 최소 너비 0 (가장 중요) */
+        min-width: 0px !important;
         flex: unset !important;
         padding: 0px !important;
     }
 
-    /* 3. 버튼 디자인 (모바일 최적화) */
+    /* 3. 버튼 디자인 (폰트 진하게!) */
     div.stButton > button {
         width: 100% !important;
         min-width: 0px !important;
-        padding: 0px !important;  /* 안쪽 여백 제거 */
+        padding: 0px !important;
         margin: 0px !important;
-        height: 40px !important;  /* 버튼 높이 */
-        font-size: 12px !important;
+        height: 40px !important;
+        
+        /* 👇 요청하신 폰트 진하게 설정 */
+        font-weight: 900 !important; 
+        font-family: sans-serif !important;
+        font-size: 13px !important;
+        
         line-height: 1 !important;
-        border-radius: 4px !important;
+        border-radius: 5px !important;
+        border: 1px solid #e0e0e0 !important;
     }
     
-    /* 4. 버튼 텍스트 강제 한 줄 표시 */
+    /* 4. 버튼 텍스트 설정 */
     div.stButton > button p {
-        font-size: 11px !important;
+        font-size: 13px !important;
+        font-weight: 900 !important; /* 글자도 진하게 */
         white-space: nowrap !important;
     }
 
-    /* 5. 화면 전체 여백 최소화 (폰 화면 넓게 쓰기) */
+    /* 5. 선택된 버튼(Primary)의 색상 강제 지정 (빨강) */
+    /* Streamlit 테마와 상관없이 최적 선택 시 빨간맛을 내기 위함 */
+    div.stButton > button[kind="primary"] {
+        background-color: #FF4B4B !important; /* 밝은 빨강 */
+        color: white !important;
+        border: none !important;
+    }
+
+    /* 6. 화면 여백 최적화 */
     .block-container {
         padding-top: 1rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
-    
-    /* [예외 처리] 설정 메뉴 등 다른 컬럼들이 깨지지 않도록 보호 */
-    /* 번호판 외의 다른 요소들은 Grid 적용을 피하기 위해 sidebar 사용 권장 */
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,38 +95,41 @@ if 'opt_nums' not in st.session_state:
 if 'worst_nums' not in st.session_state:
     st.session_state.worst_nums = set()
 if 'mode' not in st.session_state:
-    st.session_state.mode = 'gold' 
+    st.session_state.mode = 'red' # 기본값: 레드
 
 def toggle_num(n):
     mode = st.session_state.mode
-    if mode == 'gold': 
+    
+    # 레드(최적) 모드일 때
+    if mode == 'red': 
         if n in st.session_state.opt_nums:
-            st.session_state.opt_nums.remove(n) 
+            st.session_state.opt_nums.remove(n) # 이미 있으면 제거
         else:
-            if n in st.session_state.worst_nums: st.session_state.worst_nums.remove(n)
-            st.session_state.opt_nums.add(n)
+            if n in st.session_state.worst_nums: st.session_state.worst_nums.remove(n) # 파랑에 있으면 제거
+            st.session_state.opt_nums.add(n) # 레드 추가
+            
+    # 블루(최악) 모드일 때
     else: 
         if n in st.session_state.worst_nums:
-            st.session_state.worst_nums.remove(n) 
+            st.session_state.worst_nums.remove(n) # 이미 있으면 제거
         else:
-            if n in st.session_state.opt_nums: st.session_state.opt_nums.remove(n) 
-            st.session_state.worst_nums.add(n) 
+            if n in st.session_state.opt_nums: st.session_state.opt_nums.remove(n) # 레드에 있으면 제거
+            st.session_state.worst_nums.add(n) # 블루 추가
 
 def reset_all():
     st.session_state.opt_nums.clear()
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [사이드바 (설정)]
+# [사이드바 설정]
 # ==========================================
-# 메인 화면에 st.columns를 쓰면 위의 CSS Grid가 적용되어 버리므로
-# 설정 버튼들은 무조건 사이드바에 넣어야 합니다.
 with st.sidebar:
     st.header("설정 메뉴")
-    st.write("🥇 **최적(Gold)**")
+    
+    st.write("🔴 **최적(Red)**")
     pick_opt = st.selectbox("최적 개수", [0,1,2,3,4,5,6], index=4, label_visibility="collapsed")
     
-    st.write("🥶 **최악(Blue)**")
+    st.write("🔵 **최악(Blue)**")
     pick_worst = st.selectbox("최악 개수", [0,1,2,3,4,5,6], index=2, label_visibility="collapsed")
     
     st.write("---")
@@ -126,21 +140,19 @@ with st.sidebar:
 # ==========================================
 # [메인 화면]
 # ==========================================
-st.write("### 🎱 모바일 로또")
+st.write("### 🎱 로또 (Red & Blue)")
 
 # 모드 선택
-mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
+mode = st.radio("모드 선택", ["🔴 최적 (Red)", "🔵 최악 (Blue)"], horizontal=True, label_visibility="collapsed")
 
 if "최적" in mode:
-    st.session_state.mode = 'gold'
-    st.caption(f"**최적(노랑)** 입력 중 | {len(st.session_state.opt_nums)}개 선택")
+    st.session_state.mode = 'red'
+    st.caption(f"**🔴 최적(Red)** 선택 중 | {len(st.session_state.opt_nums)}개")
 else:
     st.session_state.mode = 'blue'
-    st.caption(f"**최악(파랑)** 입력 중 | {len(st.session_state.worst_nums)}개 선택")
+    st.caption(f"**🔵 최악(Blue)** 선택 중 | {len(st.session_state.worst_nums)}개")
 
-# --- 번호판 그리기 ---
-# 여기서 st.columns(7)을 호출하면, CSS Grid가 작동하여
-# 무조건 화면을 7등분합니다. 절대 줄바꿈되지 않습니다.
+# --- 번호판 그리기 (Grid 적용됨) ---
 for row_start in range(1, 46, 7):
     cols = st.columns(7)
     
@@ -148,40 +160,46 @@ for row_start in range(1, 46, 7):
         num = row_start + i
         if num > 45: break
         
+        # 버튼 라벨 및 스타일 결정
         label = str(num)
-        is_primary = False
+        is_primary = False # 기본은 흰색(secondary)
         
+        # 1. 최적(Red)일 때
         if num in st.session_state.opt_nums:
-            label = "✅" 
-            is_primary = True
+            label = "🔴" # 빨간 원
+            is_primary = True # CSS에서 빨간색 배경으로 만듦
+            
+        # 2. 최악(Blue)일 때
         elif num in st.session_state.worst_nums:
-            label = "❌"
-            is_primary = False 
+            label = "🔵" # 파란 원
+            is_primary = False # 파란색은 이모티콘으로 표현 (배경은 흰색 유지)
         
+        # 버튼 생성
         cols[i].button(
-            label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
+            label,
             key=f"btn_{num}",
             on_click=toggle_num,
             args=(num,),
-            type="primary" if is_primary or (num in st.session_state.worst_nums) else "secondary"
+            # 최적(Red)일 때만 primary 타입을 줘서 배경색을 칠함
+            type="primary" if is_primary else "secondary"
         )
 
 st.divider()
 
-if st.button("🎲 10게임 생성하기"):
-    gold_set = list(st.session_state.opt_nums)
+if st.button("🎲 10게임 생성하기", type="primary", use_container_width=True):
+    red_set = list(st.session_state.opt_nums)
     blue_set = list(st.session_state.worst_nums)
     
-    if len(gold_set) < pick_opt:
-        st.error(f"최적 부족! ({len(gold_set)}/{pick_opt})")
+    if len(red_set) < pick_opt:
+        st.error(f"🔴 최적(Red) 번호 부족! ({len(red_set)}/{pick_opt})")
     elif len(blue_set) < pick_worst:
-        st.error(f"최악 부족! ({len(blue_set)}/{pick_worst})")
+        st.error(f"🔵 최악(Blue) 번호 부족! ({len(blue_set)}/{pick_worst})")
     else:
-        st.success("생성 완료!")
+        st.success("✨ 생성 완료!")
         result_txt = ""
         for k in range(1, 11):
-            s_gold = random.sample(gold_set, pick_opt)
+            s_red = random.sample(red_set, pick_opt)
             s_blue = random.sample(blue_set, pick_worst)
-            final_nums = sorted(s_gold + s_blue)
+            final_nums = sorted(s_red + s_blue)
             result_txt += f"{k}회: {final_nums}\n"
         st.code(result_txt)
