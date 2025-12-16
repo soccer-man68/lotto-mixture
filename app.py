@@ -3,55 +3,53 @@ import random
 
 # --- 1. 페이지 설정 ---
 st.set_page_config(
-    page_title="모바일 로또",
+    page_title="로또 모바일",
     page_icon="🎱",
     layout="centered"
 )
 
 # =========================================================
-# [핵심] 모바일 세로 정렬을 막는 "강력한(Nuclear)" 스타일
+# [핵심] 모바일 '세로 줄서기'를 막는 강력한 스타일
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 컬럼(칸) 강제 고정 */
-    /* 화면이 좁아지면 무조건 세로로 쌓으려는 Streamlit의 성질을 억지로 눕힙니다 */
-    [data-testid="column"] {
-        width: 14.28% !important;       /* 100% 나누기 7 */
-        flex: 0 0 14.28% !important;    /* 크기 늘어나거나 줄어들지 않게 고정 */
-        min-width: 0px !important;      /* 최소 너비 제한 해제 (이게 핵심!) */
-        max-width: 14.28% !important;
-        padding: 1px !important;        /* 칸 사이 여백 최소화 */
-        overflow: visible !important;   /* 내용물이 잘리지 않게 */
+    /* 1. 틀(Block) 강제 가로 정렬 */
+    /* Streamlit은 모바일에서 이 틀을 세로(column)로 바꿔버립니다. */
+    /* 이걸 !important로 막아서 강제로 가로(row)로 유지시킵니다. */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important; /* 무조건 가로! */
+        flex-wrap: nowrap !important;   /* 줄바꿈 금지! */
     }
 
-    /* 2. 버튼 디자인 다이어트 */
-    /* 버튼 내부의 뚱뚱한 여백을 전부 제거해야 폰에서 7개가 들어갑니다 */
+    /* 2. 칸(Column) 너비 강제 고정 */
+    div[data-testid="column"] {
+        width: 14.28% !important;       /* 1/7 크기 */
+        flex: 0 0 14.28% !important;
+        min-width: 1px !important;      /* 최소 너비 제한 해제 */
+        padding: 1px !important;        /* 간격 최소화 */
+    }
+
+    /* 3. 버튼 디자인 (작게) */
     div.stButton > button {
         width: 100%;
-        padding: 4px 0px !important;    /* 위아래 여백 */
-        margin: 0px !important;
-        font-size: 12px !important;     /* 글씨 크기 축소 */
-        height: auto !important;
+        padding: 5px 0px !important;
+        font-size: 11px !important;     /* 글씨 더 작게 */
         min-height: 0px !important;
-        line-height: 1.2 !important;
-        border-radius: 4px !important;
-    }
-
-    /* 3. 버튼 안의 텍스트가 줄바꿈되지 않게 */
-    div.stButton > button p {
-        font-size: 12px !important;
+        margin: 0px !important;
+        line-height: 1 !important;
     }
     
-    /* 4. 모바일 화면에서 양옆 여백 제거 (화면 넓게 쓰기) */
+    /* 4. 불필요한 여백 제거 */
     .block-container {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# [로그인 로직]
+# [로그인]
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -97,74 +95,63 @@ def reset_all():
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [화면 구성 - 사이드바]
+# [사이드바 설정]
 # ==========================================
 with st.sidebar:
     st.header("설정")
-    
     st.write("🥇 **최적(Gold)**")
     pick_opt = st.selectbox("최적 개수", [0,1,2,3,4,5,6], index=4, label_visibility="collapsed")
     st.caption(f"선택: {len(st.session_state.opt_nums)}개")
-    
     st.write("🥶 **최악(Blue)**")
     pick_worst = st.selectbox("최악 개수", [0,1,2,3,4,5,6], index=2, label_visibility="collapsed")
     st.caption(f"선택: {len(st.session_state.worst_nums)}개")
-    
     st.divider()
     if st.button("🔄 초기화", use_container_width=True):
         reset_all()
         st.rerun()
 
 # ==========================================
-# [메인 화면 - 번호판]
+# [메인 화면]
 # ==========================================
 st.write("### 🎱 모바일 로또")
 
-# 입력 모드 선택
 mode = st.radio(
     "모드",
-    ["🥇 최적 (터치시 노랑)", "🥶 최악 (터치시 파랑)"],
+    ["🥇 최적", "🥶 최악"],
     horizontal=True,
     label_visibility="collapsed"
 )
 
 if "최적" in mode:
     st.session_state.mode = 'gold'
-    st.caption("현재: **최적(Gold)** 입력 중")
+    st.caption("현재: **최적(노랑)** 입력 중")
 else:
     st.session_state.mode = 'blue'
-    st.caption("현재: **최악(Blue)** 입력 중")
+    st.caption("현재: **최악(파랑)** 입력 중")
 
-st.write("") # 간격
+st.write("") 
 
-# --- 번호판 그리기 ---
-# 버튼을 그릴 때, 1~45 숫자를 순서대로 7개씩 끊어서 배치
-# (가로 7칸이 강제 적용된 CSS 안에서 작동함)
-
-# 1. 숫자 45개를 7개씩 나눔
-rows = []
-for i in range(1, 46, 7):
-    # i부터 i+7까지 자름 (예: 1~7, 8~14...)
-    rows.append(range(i, min(i + 7, 46)))
-
-# 2. 줄(row)마다 컬럼(cols) 생성
-for row_nums in rows:
-    cols = st.columns(7) # 여기서 만들어진 7개 칸은 위 CSS 때문에 절대 세로로 안 쌓임
+# --- 번호판 그리기 (7개씩 끊어서 생성) ---
+# 여기서 st.columns(7)이 실행될 때, 위의 CSS가 "가로로 서라!"라고 명령합니다.
+for row_start in range(1, 46, 7):
+    cols = st.columns(7) 
     
-    for idx, num in enumerate(row_nums):
-        # 버튼 라벨 & 색상
+    for i in range(7):
+        num = row_start + i
+        if num > 45: break
+        
+        # 버튼 텍스트/스타일
         label = str(num)
         is_primary = False
         
         if num in st.session_state.opt_nums:
-            label = "✅" # 체크 표시
+            label = "✅" 
             is_primary = True
         elif num in st.session_state.worst_nums:
-            label = "❌" # 엑스 표시
+            label = "❌"
             is_primary = False 
         
-        # 버튼 배치 (cols[0] ~ cols[6])
-        cols[idx].button(
+        cols[i].button(
             label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
             key=f"btn_{num}",
             on_click=toggle_num,
@@ -183,7 +170,7 @@ if st.button("🎲 10게임 생성", type="primary", use_container_width=True):
     elif len(blue_set) < pick_worst:
         st.error(f"최악 번호 부족! ({len(blue_set)}/{pick_worst})")
     else:
-        st.success("생성 완료! (사이드바에서 개수 조절)")
+        st.success("생성 완료! (메뉴>설정 확인)")
         result_txt = ""
         for k in range(1, 11):
             s_gold = random.sample(gold_set, pick_opt)
