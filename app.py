@@ -9,43 +9,45 @@ st.set_page_config(
 )
 
 # =========================================================
-# [핵심] "최소 너비(min-width)" 제한을 박살내는 CSS
+# [핵심 CSS] "모든 컬럼을 무조건 1/7로 고정하라"
 # =========================================================
 st.markdown("""
 <style>
-    /* 1. 가장 중요: 컬럼의 '최소 너비' 제한을 0으로 만듦 */
-    /* 이게 없으면 폰에서 버튼이 뚱뚱해져서 화면 밖으로 밀려납니다. */
+    /* 1. 이 페이지에 있는 모든 '칸(Column)'은 무조건 14.28% 너비를 가진다. */
+    /* 다른 설정(최소 너비 등)은 전부 무시(!important)한다. */
     div[data-testid="column"] {
-        width: 14.2% !important;
-        flex: 1 1 14.2% !important;
-        min-width: 0px !important; /* 👈 범인 검거! 절대 지우지 마세요 */
-        padding: 1px !important;   /* 옆 간격 1px */
+        width: 14.28% !important;
+        flex: 0 0 14.28% !important;
+        min-width: 0px !important;
+        max-width: 14.28% !important;
+        padding: 1px !important; /* 칸 사이 간격 1px */
+        overflow: hidden !important; /* 튀어나오면 자름 */
     }
 
-    /* 2. 컬럼들을 감싸는 틀의 간격(Gap) 제거 */
+    /* 2. 칸들을 감싸는 부모 틀의 간격을 없앤다. */
     div[data-testid="stHorizontalBlock"] {
-        gap: 0px !important;      /* 👈 넓은 간격의 원인 제거 */
-        flex-wrap: nowrap !important;
+        gap: 0px !important;
+        flex-wrap: nowrap !important; /* 줄바꿈 절대 금지 */
     }
 
-    /* 3. 버튼 크기 강제 축소 */
+    /* 3. 버튼 크기와 글자 크기를 확 줄인다. */
     div.stButton > button {
         width: 100% !important;
-        padding: 0px !important;  /* 안쪽 여백 제거 */
-        margin: 0px !important;   /* 바깥 여백 제거 */
-        font-size: 10px !important; /* 글자 크기 다이어트 */
-        height: 40px !important;  /* 버튼 높이 */
-        min-height: 0px !important;
+        padding: 0px !important;
+        margin: 0px !important;
+        height: 35px !important;   /* 버튼 높이 */
+        font-size: 10px !important; /* 글자 크기 10px */
         line-height: 1 !important;
+        border: 1px solid #ddd !important; /* 경계선 얇게 */
     }
-
-    /* 4. 체크 표시(✅)가 줄바꿈 안 되게 설정 */
+    
+    /* 4. 버튼 안의 텍스트가 두 줄이 되지 않게 한다. */
     div.stButton > button p {
         font-size: 10px !important;
         white-space: nowrap !important;
     }
-    
-    /* 5. 화면 전체 여백 제거 (폰 화면 넓게 쓰기) */
+
+    /* 5. 전체 화면 여백을 최소화해서 공간을 확보한다. */
     .block-container {
         padding-left: 0.2rem !important;
         padding-right: 0.2rem !important;
@@ -63,7 +65,7 @@ if 'logged_in' not in st.session_state:
 if not st.session_state.logged_in:
     st.warning("🔒 로그인")
     pw = st.text_input("비밀번호", type="password")
-    if st.button("로그인", use_container_width=True):
+    if st.button("로그인"): # 여기는 use_container_width 안 씀 (CSS 충돌 방지)
         if pw == "0207":
             st.session_state.logged_in = True
             st.rerun()
@@ -99,18 +101,23 @@ def reset_all():
     st.session_state.worst_nums.clear()
 
 # ==========================================
-# [사이드바]
+# [사이드바 메뉴] (화면 공간 확보를 위해 전부 이쪽으로 뺌)
 # ==========================================
 with st.sidebar:
-    st.header("설정")
+    st.header("설정 메뉴")
+    st.write("---")
     st.write("🥇 **최적(Gold)**")
     pick_opt = st.selectbox("최적 개수", [0,1,2,3,4,5,6], index=4, label_visibility="collapsed")
     st.caption(f"선택: {len(st.session_state.opt_nums)}개")
+    
+    st.write("---")
     st.write("🥶 **최악(Blue)**")
     pick_worst = st.selectbox("최악 개수", [0,1,2,3,4,5,6], index=2, label_visibility="collapsed")
     st.caption(f"선택: {len(st.session_state.worst_nums)}개")
-    st.divider()
-    if st.button("🔄 초기화", use_container_width=True):
+    
+    st.write("---")
+    # 초기화 버튼
+    if st.button("🔄 번호 초기화"):
         reset_all()
         st.rerun()
 
@@ -119,19 +126,25 @@ with st.sidebar:
 # ==========================================
 st.write("### 🎱 모바일 로또")
 
-mode = st.radio("모드", ["🥇 최적", "🥶 최악"], horizontal=True, label_visibility="collapsed")
+# 모드 선택 (여기는 columns 안 쓰고 그냥 라디오 버튼으로 둠)
+# columns를 쓰면 위의 강력한 CSS 때문에 모양이 깨질 수 있어서 피함
+mode = st.radio(
+    "모드 선택",
+    ["🥇 최적 (터치시 노랑)", "🥶 최악 (터치시 파랑)"],
+    label_visibility="collapsed"
+)
 
 if "최적" in mode:
     st.session_state.mode = 'gold'
-    st.caption("현재: **최적(노랑)** 선택 중")
+    st.info("현재: **최적(Gold)** 입력 중")
 else:
     st.session_state.mode = 'blue'
-    st.caption("현재: **최악(파랑)** 선택 중")
+    st.info("현재: **최악(Blue)** 입력 중")
 
-# --- 번호판 그리기 ---
-# 강제 CSS(min-width: 0)가 적용된 상태에서 그려집니다.
+# --- 번호판 그리기 (유일하게 columns를 쓰는 곳) ---
+# 위의 CSS가 오직 이것만을 위해 존재합니다.
 for row_start in range(1, 46, 7):
-    cols = st.columns(7)
+    cols = st.columns(7) # 무조건 14.28%씩 쪼개짐
     
     for i in range(7):
         num = row_start + i
@@ -147,6 +160,7 @@ for row_start in range(1, 46, 7):
             label = "❌"
             is_primary = False 
         
+        # 버튼 생성
         cols[i].button(
             label if (num in st.session_state.opt_nums or num in st.session_state.worst_nums) else str(num),
             key=f"btn_{num}",
@@ -157,7 +171,8 @@ for row_start in range(1, 46, 7):
 
 st.divider()
 
-if st.button("🎲 10게임 생성", type="primary", use_container_width=True):
+# 생성 버튼 (CSS 충돌 방지를 위해 use_container_width 안 씀)
+if st.button("🎲 10게임 생성하기"):
     gold_set = list(st.session_state.opt_nums)
     blue_set = list(st.session_state.worst_nums)
     
@@ -166,7 +181,7 @@ if st.button("🎲 10게임 생성", type="primary", use_container_width=True):
     elif len(blue_set) < pick_worst:
         st.error(f"최악 번호 부족! ({len(blue_set)}/{pick_worst})")
     else:
-        st.success("생성 완료! (메뉴>설정 확인)")
+        st.success("생성 완료! (메뉴를 열어 개수 확인)")
         result_txt = ""
         for k in range(1, 11):
             s_gold = random.sample(gold_set, pick_opt)
